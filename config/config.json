@@ -1,0 +1,20 @@
+{
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "endpoints": {
+    "get_post": "/posts/{id}",
+    "get_posts": "/posts",
+    "create_post": "/posts"
+  },
+  "default_headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+  },
+  "test_data": {
+    "valid_post_id": 1,
+    "invalid_post_id": 999999,
+    "new_post": {
+      "title": "hello",
+      "body": "from qa automation",
+      "userId": 1
+    }
+  }
+}
