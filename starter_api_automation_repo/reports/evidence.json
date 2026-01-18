@@ -1,6 +1,6 @@
 [
   {
-    "time": "2026-01-18 15:10:51",
+    "time": "2026-01-18 17:03:31",
     "test": "test_create_post",
     "method": "POST",
     "url": "https://jsonplaceholder.typicode.com/posts",
@@ -13,7 +13,7 @@
     }
   },
   {
-    "time": "2026-01-18 15:10:51",
+    "time": "2026-01-18 17:03:31",
     "test": "test_get_post_valid",
     "method": "GET",
     "url": "https://jsonplaceholder.typicode.com/posts/1",
@@ -26,7 +26,7 @@
     }
   },
   {
-    "time": "2026-01-18 15:10:52",
+    "time": "2026-01-18 17:03:31",
     "test": "test_get_post_invalid_id",
     "method": "GET",
     "url": "https://jsonplaceholder.typicode.com/posts/99999",
@@ -34,7 +34,7 @@
     "response": {}
   },
   {
-    "time": "2026-01-18 15:10:52",
+    "time": "2026-01-18 17:03:31",
     "test": "test_get_posts_collection",
     "method": "GET",
     "url": "https://jsonplaceholder.typicode.com/posts",
@@ -643,7 +643,7 @@
     ]
   },
   {
-    "time": "2026-01-18 15:10:52",
+    "time": "2026-01-18 17:03:31",
     "test": "test_get_post_missing_id_param_graceful",
     "method": "FORMAT_URL",
     "url": "https://jsonplaceholder.typicode.com/posts/{id}",
