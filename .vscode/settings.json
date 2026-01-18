@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./starter_api_automation_repo"
+    ]
+}
