@@ -1,76 +1,79 @@
 import json
-import os
 import pytest
 import webbrowser
 from datetime import datetime
 from pathlib import Path
 
-from starter_api_automation_repo.utils.evidence import EVIDENCE_PATH as EVIDENCE_JSON
+from starter_api_automation_repo.utils.evidence import EVIDENCE_PATH, reset_evidence
+
 
 ROOT = Path(__file__).resolve().parent
 REPORTS_DIR = ROOT / "reports"
-
-REPORT_TEMPLATE = REPORTS_DIR / "template.html"   # ✅ static template (never overwritten)
-REPORT_HTML = REPORTS_DIR / "report.html"         # ✅ generated output
-REPORT_CSS = REPORTS_DIR / "report.css"           # ✅ stylesheet
+REPORT_HTML = REPORTS_DIR / "report.html"
 
 
 def now_clean():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def ensure_css_file():
-    REPORTS_DIR.mkdir(exist_ok=True)
-    if REPORT_CSS.exists():
-        return
-
-    REPORT_CSS.write_text(
-        """body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
-h1 { margin-bottom: 8px; }
-.meta { color: #444; margin-bottom: 12px; }
-.status { font-weight: 700; margin: 12px 0 18px 0; padding: 10px 12px; border-radius: 8px; display: inline-block; }
-.pass { background: #eaffea; border: 1px solid #b6f2b6; color: #0a6b0a; }
-.fail { background: #ffecec; border: 1px solid #ffb8b8; color: #8a0a0a; }
-hr { border: none; border-top: 1px solid #ddd; margin: 18px 0; }
-table { width: 100%; border-collapse: collapse; margin-top: 12px; table-layout: fixed; }
-th, td { border: 1px solid #ddd; padding: 10px; vertical-align: top; word-wrap: break-word; }
-th { background: #f6f6f6; text-align: left; }
-pre { white-space: pre-wrap; margin: 0; background: #f4f4f4; padding: 10px; border-radius: 6px; font-size: 12px; line-height: 1.35; }
-a { color: #0b66c3; text-decoration: none; }
-a:hover { text-decoration: underline; }
-.small { font-size: 12px; color: #666; }""",
-        encoding="utf-8",
+def html_escape(s: str) -> str:
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
     )
 
 
-def render_evidence():
-    if not EVIDENCE_JSON.exists():
-        return "<p><b>No evidence.json found.</b> Tests did not write evidence.</p>"
+def load_evidence():
+    print("[DEBUG] EVIDENCE_PATH =", EVIDENCE_PATH)
+    if not EVIDENCE_PATH.exists():
+        print("[DEBUG] evidence.json does not exist")
+        return []
+
+    raw = EVIDENCE_PATH.read_text(encoding="utf-8")
+    print("[DEBUG] evidence.json bytes =", len(raw))
 
     try:
-        data = json.loads(EVIDENCE_JSON.read_text(encoding="utf-8"))
+        data = json.loads(raw) if raw.strip() else []
     except Exception as e:
-        return f"<p><b>Could not parse evidence.json:</b> {e}</p>"
+        print("[DEBUG] evidence.json parse error:", e)
+        return []
 
+    print("[DEBUG] evidence entries =", len(data))
+    return data
+
+
+def render_evidence_table(data):
     if not data:
-        return "<p><b>Evidence file is empty.</b></p>"
+        return "<p><b>No evidence was captured.</b> (evidence.json empty)</p>"
 
     rows = []
     for e in data:
-        status_val = e.get("status_code", e.get("status", ""))  # supports both keys
+        time_val = html_escape(e.get("time", ""))
+        test_val = html_escape(e.get("test", ""))
+        method_val = html_escape(e.get("method", ""))
+        url_val = html_escape(e.get("url", ""))
+        status_val = html_escape(e.get("status", e.get("status_code", "")))
+
         resp = e.get("response", {})
-        rows.append(
-            f"""
-            <tr>
-              <td>{e.get('time','')}</td>
-              <td>{e.get('test','')}</td>
-              <td>{e.get('method','')}</td>
-              <td><a href="{e.get('url','')}" target="_blank">{e.get('url','')}</a></td>
-              <td>{status_val}</td>
-              <td><pre>{json.dumps(resp, indent=2)}</pre></td>
-            </tr>
-            """
-        )
+        try:
+            resp_pretty = json.dumps(resp, indent=2, ensure_ascii=False)
+        except Exception:
+            resp_pretty = str(resp)
+
+        rows.append(f"""
+          <tr>
+            <td>{time_val}</td>
+            <td>{test_val}</td>
+            <td>{method_val}</td>
+            <td><a href="{url_val}" target="_blank" rel="noopener">{url_val}</a></td>
+            <td>{status_val}</td>
+            <td><pre>{html_escape(resp_pretty)}</pre></td>
+          </tr>
+        """)
 
     return f"""
     <h2>API Response Evidence</h2>
@@ -93,42 +96,64 @@ def render_evidence():
 
 
 def run_tests():
-    os.chdir(ROOT)
     REPORTS_DIR.mkdir(exist_ok=True)
-    ensure_css_file()
 
-    # ✅ delete evidence each run (fresh run)
-    if EVIDENCE_JSON.exists():
-       EVIDENCE_JSON.unlink()
+    print("\n[RUN] Resetting evidence...")
+    reset_evidence()
 
-    start_time = now_clean()
+    started = now_clean()
+    print("[RUN] pytest starting at", started)
+
     result = pytest.main(["-q"])
-    end_time = now_clean()
 
-    passed = (result == 0)
+    finished = now_clean()
+    print("[RUN] pytest finished at", finished)
+    print("[RUN] exit code =", result)
+
+    data = load_evidence()
+    evidence_html = render_evidence_table(data)
+
     status_html = (
-        '<div class="status pass">ALL TESTS PASSED</div>'
-        if passed
-        else '<div class="status fail">TEST FAILURES DETECTED</div>'
+        "<div class='status pass'>ALL TESTS PASSED</div>"
+        if result == 0
+        else "<div class='status fail'>TEST FAILURES DETECTED</div>"
     )
 
-    meta_html = f"""
-    <div class="meta">
-      <div><b>Started at:</b> {start_time}</div>
-      <div><b>Finished at:</b> {end_time}</div>
-    </div>
-    """
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>API Automation Test Report</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+    h1 {{ color: #2c3e50; margin-bottom: 6px; }}
+    .meta {{ color: #444; margin-bottom: 14px; }}
+    .status {{ font-weight: bold; margin: 14px 0; font-size: 18px; }}
+    .pass {{ color: green; }}
+    .fail {{ color: red; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 14px; }}
+    th, td {{ border: 1px solid #ccc; padding: 10px; vertical-align: top; }}
+    th {{ background: #f1f1f1; text-align: left; }}
+    pre {{ background: #f4f4f4; padding: 10px; white-space: pre-wrap; word-break: break-word; }}
+  </style>
+</head>
+<body>
+  <h1>API Automation Test Report</h1>
 
-    evidence_html = render_evidence()
+  <div class="meta"><b>Started:</b> {started} &nbsp;&nbsp; <b>Finished:</b> {finished}</div>
 
-    # ✅ Read STATIC template (placeholders always exist)
-    template = REPORT_TEMPLATE.read_text(encoding="utf-8")
+  {status_html}
 
-    html = template.replace('<div id="meta"></div>', meta_html)
-    html = html.replace('<div id="status"></div>', status_html)
-    html = html.replace('<div id="evidence"></div>', evidence_html)
+  <hr />
+
+  {evidence_html}
+</body>
+</html>
+"""
 
     REPORT_HTML.write_text(html, encoding="utf-8")
+    print("[RUN] wrote report.html ->", REPORT_HTML.resolve())
+
     webbrowser.open(REPORT_HTML.resolve().as_uri())
 
     raise SystemExit(result)
