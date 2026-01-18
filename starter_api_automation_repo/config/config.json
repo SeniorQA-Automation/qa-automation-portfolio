@@ -1,20 +1,53 @@
 {
   "base_url": "https://jsonplaceholder.typicode.com",
+
   "endpoints": {
     "get_post": "/posts/{id}",
     "get_posts": "/posts",
-    "create_post": "/posts"
+    "create_post": "/posts",
+    "get_user": "/users/{id}"
   },
+
   "default_headers": {
     "Content-Type": "application/json; charset=UTF-8"
   },
+
   "test_data": {
-    "valid_post_id": 1,
-    "invalid_post_id": 999999,
-    "new_post": {
-      "title": "hello",
-      "body": "from qa automation",
-      "userId": 1
-    }
+    "valid_post_ids": [1, 2, 3, 4, 5],
+    "invalid_post_ids": [99999, 88888, -1],
+
+    "valid_user_ids": [1, 2, 3, 4],
+    "inactive_user_id": 10,
+
+    "new_posts": [
+      {
+        "title": "Summer Travel Guide",
+        "body": "Top destinations to visit during the summer season.",
+        "userId": 1
+      },
+      {
+        "title": "Healthy Morning Routines",
+        "body": "Simple habits that can improve your mornings.",
+        "userId": 2
+      },
+      {
+        "title": "Personal Finance Basics",
+        "body": "Understanding budgeting, saving, and investing.",
+        "userId": 3
+      }
+    ],
+
+    "invalid_posts": [
+      {
+        "title": "",
+        "body": "Post with missing title",
+        "userId": 1
+      },
+      {
+        "title": "Unknown author",
+        "body": "This post references a user that does not exist.",
+        "userId": 9999
+      }
+    ]
   }
 }
